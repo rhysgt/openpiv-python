@@ -559,6 +559,9 @@ class Multiprocesser:
         elif pattern_b == '(1+2),(3+4)':
             self.files_b = self.files_a[1::2]
             self.files_a = self.files_a[0::2]
+        elif pattern_b == '(1+2),(1+3)':
+            self.files_b = self.files_a[1:]
+            self.files_a = self.files_a[:1]*(len(self.files_a)-1)
         else:
             self.files_b = sorted(data_dir.glob(pattern_b))
 
