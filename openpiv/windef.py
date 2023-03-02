@@ -830,10 +830,14 @@ def multipass_img_deform(
 
     # interpolating the displacements from the old grid onto the new grid
     # y befor x because of numpy works row major
-    ip = RectBivariateSpline(y_old, x_old, np.ma.filled(u_old, 0.))
+    ip = RectBivariateSpline(y_old, x_old, np.ma.filled(u_old, 0.), 
+                             kx=settings.interpolation_order, 
+                             ky=settings.interpolation_order)
     u_pre = ip(y_int, x_int)
 
-    ip2 = RectBivariateSpline(y_old, x_old, np.ma.filled(v_old, 0.))
+    ip2 = RectBivariateSpline(y_old, x_old, np.ma.filled(v_old, 0.), 
+                              kx=settings.interpolation_order, 
+                              ky=settings.interpolation_order)
     v_pre = ip2(y_int, x_int)
 
     # if settings.show_plot:
@@ -861,7 +865,8 @@ def multipass_img_deform(
     if settings.deformation_method == "symmetric":
         # this one is doing the image deformation (see above)
         x_new, y_new, ut, vt = create_deformation_field(
-            frame_a, x, y, u_pre, v_pre)
+            frame_a, x, y, u_pre, v_pre,
+            interpolation_order=settings.interpolation_order)
         frame_a = scn.map_coordinates(
             frame_a, ((y_new - vt / 2, x_new - ut / 2)),
             order=settings.interpolation_order, mode='nearest')
@@ -871,7 +876,8 @@ def multipass_img_deform(
     elif settings.deformation_method == "second image":
         frame_b = deform_windows(
             frame_b, x, y, u_pre, -v_pre,
-            interpolation_order=settings.interpolation_order)
+            interpolation_order=settings.interpolation_order,
+            interpolation_order2=settings.interpolation_order)
     else:
         raise Exception("Deformation method is not valid.")
 
