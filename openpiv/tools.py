@@ -22,6 +22,7 @@ import sys
 import pathlib
 import multiprocessing
 from typing import Any, Union, List, Optional
+from functools import partial
 # import re
 
 import numpy as np
@@ -582,7 +583,7 @@ class Multiprocesser:
                 "Something failed loading the image file. No images were found. Please check directory and image template name."
             )
 
-    def run(self, func, n_cpus=1):
+    def run(self, func, n_cpus=1, **kwargs):
         """Start to process images.
         
         Parameters
@@ -609,10 +610,10 @@ class Multiprocesser:
         # since it is difficult to debug multiprocessing stuff.
         if n_cpus > 1:
             pool = multiprocessing.Pool(processes=n_cpus)
-            res = pool.map(func, image_pairs)
+            res = pool.map(partial(func, **kwargs), image_pairs)
         else:
             for image_pair in image_pairs:
-                func(image_pair)
+                func(image_pair, **kwargs)
 
 
 def negative(image):
