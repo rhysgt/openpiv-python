@@ -204,12 +204,12 @@ def local_median_val(u, v, u_threshold, v_threshold, size=1):
     f = np.ones((2*size+1, 2*size+1))
     f[size,size] = 0
 
-    masked_u = np.where(~u.mask, u.data, np.nan)
-    masked_v = np.where(~v.mask, v.data, np.nan)
+    # masked_u = np.where(~u.mask, u.data, np.nan)
+    # masked_v = np.where(~v.mask, v.data, np.nan)
 
-    um = generic_filter(masked_u, np.nanmedian, mode='constant',
+    um = generic_filter(u, np.nanmedian, mode='constant',
                         cval=np.nan, footprint=f)
-    vm = generic_filter(masked_v, np.nanmedian, mode='constant',
+    vm = generic_filter(v, np.nanmedian, mode='constant',
                         cval=np.nan, footprint=f)
 
     ind = (np.abs((u - um)) > u_threshold) | (np.abs((v - vm)) > v_threshold)
@@ -254,10 +254,12 @@ def typical_validation(
         plt.gca().invert_yaxis()
         plt.title('Before (b) and global (m) local (k)')
 
-    # flag = np.zeros(u.shape, dtype=bool)
+    flag = np.zeros(u.shape, dtype=bool)
 
     # Global validation
-    flag_g = global_val(u, v, settings.min_max_u_disp, settings.min_max_v_disp)
+    if settings.min_max_validate:
+        flag = flag | global_val(u, v, settings.min_max_u_disp, 
+                                 settings.min_max_v_disp)
 
     # u[flag_g] = np.ma.masked
     # v[flag_g] = np.ma.masked
@@ -265,9 +267,8 @@ def typical_validation(
     # if settings.show_all_plots:
     #     plt.quiver(u, v, color='m')
 
-    flag_s = global_std(
-        u, v, std_threshold=settings.std_threshold
-    )
+    if settings.std_validate:
+        flag = flag | global_std(u, v, std_threshold=settings.std_threshold)
 
     # u[flag_s] = np.ma.masked
     # v[flag_s] = np.ma.masked
@@ -276,14 +277,13 @@ def typical_validation(
     # if settings.show_all_plots:
     #     plt.quiver(u,v,color='k')
     
-
-    flag_m = local_median_val(
-        u,
-        v,
-        u_threshold=settings.median_threshold,
-        v_threshold=settings.median_threshold,
-        size=settings.median_size,
-    )
+    if settings.median_validate:
+        flag = flag | local_median_val(
+            u, v, 
+            u_threshold=settings.median_threshold,
+            v_threshold=settings.median_threshold, 
+            size=settings.median_size
+        )
     
     # u[flag_m] = np.ma.masked
     # v[flag_m] = np.ma.masked
@@ -292,7 +292,7 @@ def typical_validation(
     #     plt.quiver(u,v,color='r')
 
     # print(f"median filter invalidated {sum(flag_m.flatten())} vectors")
-    flag = flag_g | flag_m | flag_s
+    # flag = flag_g | flag_m | flag_s
 
 
     if settings.sig2noise_validate:
