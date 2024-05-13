@@ -172,6 +172,8 @@ class PIVSettings:
 
     num_cpus: int=1
 
+    max_array_size: int=None
+
 def prepare_images(
     file_a: pathlib.Path,
     file_b: pathlib.Path,
@@ -724,6 +726,7 @@ def first_pass(frame_a, frame_b, settings):
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     shapes = np.array(get_field_shape(frame_a.shape,
@@ -936,6 +939,7 @@ def multipass_img_deform(
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     # get_field_shape expects tuples for rectangular windows

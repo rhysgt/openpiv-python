@@ -911,6 +911,7 @@ def extended_search_area_piv(
     width: int=2,
     normalized_correlation: bool=False,
     use_vectorized: bool=False,
+    max_array_size: int = None,
 ):
     """Standard PIV cross-correlation algorithm, with an option for
     extended area search that increased dynamic range. The search region
@@ -1060,26 +1061,53 @@ def extended_search_area_piv(
         mask = np.broadcast_to(mask, aa.shape)
         aa *= mask
 
-    corr = fft_correlate_images(aa, bb,
-                                correlation_method=correlation_method,
-                                normalized_correlation=normalized_correlation)
-    if use_vectorized is True:
-        u, v = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
+    if max_array_size is not None and aa.size > max_array_size:
+        u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
+        area_size = search_area_size[0] * search_area_size[1]
+        num_areas = aa.shape[0]
+        areas_per_block = int(max_array_size // area_size)
+        num_blocks = int(np.ceil(num_areas / areas_per_block))
+        for i in range(num_blocks):
+            print(f'block {i+1}')
+            block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
+
+            corr = fft_correlate_images(
+                aa[block_start:block_end], bb[block_start:block_end],
+                correlation_method=correlation_method,
+                normalized_correlation=normalized_correlation
+            )
+            u[block_start:block_end], v[block_start:block_end] = vectorized_correlation_to_displacements(
+                corr, subpixel_method=subpixel_method
+            )
+
+        u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
+
     else:
-        u, v = correlation_to_displacement(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
+        corr = fft_correlate_images(aa, bb,
+                                    correlation_method=correlation_method,
+                                    normalized_correlation=normalized_correlation)
+        
+        if use_vectorized:
+            u, v = vectorized_correlation_to_displacements(
+                corr, n_rows, n_cols, subpixel_method=subpixel_method
+            )
+        else:
+            u, v = correlation_to_displacement(
+                corr, n_rows, n_cols, subpixel_method=subpixel_method
+            )
+        
 
     # return output depending if user wanted sig2noise information
     if sig2noise_method is not None:
-        if use_vectorized is True:
-            sig2noise = vectorized_sig2noise_ratio(
-                corr, sig2noise_method=sig2noise_method, width=width
-            )
-        else:
-            sig2noise = sig2noise_ratio(
-                corr, sig2noise_method=sig2noise_method, width=width
-            )
+        raise NotImplementedError('BLAHASDB ASD')
+        # if use_vectorized is True:
+        #     sig2noise = vectorized_sig2noise_ratio(
+        #         corr, sig2noise_method=sig2noise_method, width=width
+        #     )
+        # else:
+        #     sig2noise = sig2noise_ratio(
+        #         corr, sig2noise_method=sig2noise_method, width=width
+        #     )
     else:
         sig2noise = np.zeros_like(u)*np.nan
 
