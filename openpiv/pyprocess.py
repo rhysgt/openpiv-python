@@ -1070,12 +1070,13 @@ def extended_search_area_piv(
     full_arr_size = n_rows * n_cols * window_size[0] * window_size[1]
 
     if max_array_size is not None and full_arr_size > max_array_size:
+        total_bad = 0
         u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
         area_size = search_area_size[0] * search_area_size[1]
         areas_per_block = int(max_array_size // area_size)
         num_blocks = int(np.ceil(num_areas / areas_per_block))
+        #print('num_blocks: {0}'.format(num_blocks))        
         for i in range(num_blocks):
-            print(f'block {i+1}')
             block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
 
             # We implement the new vectorized code
@@ -1091,7 +1092,11 @@ def extended_search_area_piv(
                 corr, subpixel_method=subpixel_method
             )
 
+            total_bad += invalid
+            print('block {0} / {1} : {2} bad peaks so far'.format(i+1, num_blocks, total_bad), end='\r')
+
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
+        print('\n')
 
     else:
         # We implement the new vectorized code
@@ -1102,11 +1107,11 @@ def extended_search_area_piv(
                                     normalized_correlation=normalized_correlation)
         
         if use_vectorized:
-            u, v = vectorized_correlation_to_displacements(
+            u, v, invalid = vectorized_correlation_to_displacements(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
         else:
-            u, v = correlation_to_displacement(
+            u, v, invalid = correlation_to_displacement(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
         
@@ -1212,7 +1217,7 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     peaks1_i[invalid] = corr.shape[1] // 2 # temp. so no errors would be produced
     peaks1_j[invalid] = corr.shape[2] // 2
     
-    print(f"Found {len(invalid)} bad peak(s)")
+    #print(f"Found {len(invalid)} bad peak(s)")
     if len(invalid) == corr.shape[0]: # in case something goes horribly wrong 
         return np.zeros((np.size(corr, 0), 2))*np.nan
     
@@ -1275,9 +1280,9 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     #disp[ind, :] = np.vstack((disp_vx, disp_vy)).T
     #return disp[:,0].reshape((n_rows, n_cols)), disp[:,1].reshape((n_rows, n_cols))
     if n_rows == None or n_cols == None:
-        return disp_vx, disp_vy
+        return disp_vx, disp_vy, len(invalid)
     else:
-        return disp_vx.reshape((n_rows, n_cols)), disp_vy.reshape((n_rows, n_cols))
+        return disp_vx.reshape((n_rows, n_cols)), disp_vy.reshape((n_rows, n_cols)), len(invalid)
     
     
 def nextpower2(i):
