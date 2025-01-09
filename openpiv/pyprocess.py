@@ -184,6 +184,7 @@ def sliding_window_array(
     image: np.ndarray, 
     window_size: Tuple[int,int]=(64,64),
     overlap: Tuple[int,int]=(32,32),
+    block_range = None
     )-> np.ndarray:
     '''
     This version does not use numpy as_strided and is much more memory efficient.
@@ -199,17 +200,22 @@ def sliding_window_array(
     #     overlap = (overlap, overlap)
 
     x, y = get_rect_coordinates(image.shape, window_size, overlap, center_on_field = False)
-    x = (x - window_size[1]//2).astype(int)
-    y = (y - window_size[0]//2).astype(int)
-    x, y = np.reshape(x, (-1,1,1)), np.reshape(y, (-1,1,1))
+    x = (x - window_size[1]//2).astype(int).flatten()
+    y = (y - window_size[0]//2).astype(int).flatten()
 
     win_x, win_y = np.meshgrid(np.arange(0, window_size[1]), np.arange(0, window_size[0]))
-    win_x = win_x[np.newaxis,:,:] + x
-    win_y = win_y[np.newaxis,:,:] + y
+    if block_range is None:
+        win_x = win_x[None,:,:] + x[:, None, None]
+        win_y = win_y[None,:,:] + y[:, None, None]
+
+    else:
+        win_x = win_x[None,:,:] + x[block_range[0]:block_range[1], None, None] 
+        win_y = win_y[None,:,:] + y[block_range[0]:block_range[1], None, None]
+
+
     windows = image[win_y, win_x]
     
     return windows
-
 
 def moving_window_array(array, window_size, overlap):
     """
@@ -1035,10 +1041,6 @@ def extended_search_area_piv(
     # get field shape
     n_rows, n_cols = get_field_shape(frame_a.shape, search_area_size, overlap)
 
-    # We implement the new vectorized code
-    aa = sliding_window_array(frame_a, search_area_size, overlap)
-    bb = sliding_window_array(frame_b, search_area_size, overlap)
-
     # for the case of extended seearch, the window size is smaller than
     # the search_area_size. In order to keep it all vectorized the
     # approach is to use the interrogation window in both
@@ -1046,7 +1048,11 @@ def extended_search_area_piv(
     # but mask out the region around
     # the interrogation window in the frame A
 
+    num_areas = n_rows * n_cols
     if search_area_size > window_size:
+
+        ## This will be broken now...
+
         # before masking with zeros we need to remove
         # edges
 
@@ -1061,28 +1067,36 @@ def extended_search_area_piv(
         mask = np.broadcast_to(mask, aa.shape)
         aa *= mask
 
-    if max_array_size is not None and aa.size > max_array_size:
+    full_arr_size = n_rows * n_cols * window_size[0] * window_size[1]
+
+    if max_array_size is not None and full_arr_size > max_array_size:
         u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
         area_size = search_area_size[0] * search_area_size[1]
-        num_areas = aa.shape[0]
         areas_per_block = int(max_array_size // area_size)
         num_blocks = int(np.ceil(num_areas / areas_per_block))
         for i in range(num_blocks):
             print(f'block {i+1}')
             block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
 
+            # We implement the new vectorized code
+            aa = sliding_window_array(frame_a, search_area_size, overlap, block_range=(block_start, block_end))
+            bb = sliding_window_array(frame_b, search_area_size, overlap, block_range=(block_start, block_end))
+
             corr = fft_correlate_images(
-                aa[block_start:block_end], bb[block_start:block_end],
+                aa, bb,
                 correlation_method=correlation_method,
                 normalized_correlation=normalized_correlation
             )
-            u[block_start:block_end], v[block_start:block_end] = vectorized_correlation_to_displacements(
+            u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
                 corr, subpixel_method=subpixel_method
             )
 
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
 
     else:
+        # We implement the new vectorized code
+        aa = sliding_window_array(frame_a, search_area_size, overlap)
+        bb = sliding_window_array(frame_b, search_area_size, overlap)
         corr = fft_correlate_images(aa, bb,
                                     correlation_method=correlation_method,
                                     normalized_correlation=normalized_correlation)
