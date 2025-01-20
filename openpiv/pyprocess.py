@@ -1093,11 +1093,11 @@ def extended_search_area_piv(
                                     normalized_correlation=normalized_correlation)
         
         if use_vectorized:
-            u, v = vectorized_correlation_to_displacements(
+            u, v, invalid = vectorized_correlation_to_displacements(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
         else:
-            u, v = correlation_to_displacement(
+            u, v, invalid = correlation_to_displacement(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
         
