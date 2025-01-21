@@ -1096,12 +1096,13 @@ def extended_search_area_piv(
             u, v, invalid = vectorized_correlation_to_displacements(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
+            print('{0} bad peaks'.format(invalid))
         else:
-            u, v, invalid = correlation_to_displacement(
+            u, v = correlation_to_displacement(
                 corr, n_rows, n_cols, subpixel_method=subpixel_method
             )
 
-        print('{0} bad peaks'.format(invalid))
+        
         
 
     # return output depending if user wanted sig2noise information
