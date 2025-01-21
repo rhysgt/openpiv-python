@@ -260,6 +260,8 @@ def typical_validation(
     if settings.min_max_validate:
         flag = flag | global_val(u, v, settings.min_max_u_disp, 
                                  settings.min_max_v_disp)
+        
+        print(f"minmax filter invalidated {sum(flag.flatten())} vectors")
 
     # u[flag_g] = np.ma.masked
     # v[flag_g] = np.ma.masked
@@ -270,10 +272,12 @@ def typical_validation(
     if settings.std_validate:
         flag = flag | global_std(u, v, std_threshold=settings.std_threshold)
 
+        print(f"std filter invalidated {sum(flag.flatten())} vectors")
+
     # u[flag_s] = np.ma.masked
     # v[flag_s] = np.ma.masked
 
-    # print(f"std filter invalidated {sum(flag_s.flatten())} vectors")
+    
     # if settings.show_all_plots:
     #     plt.quiver(u,v,color='k')
     
@@ -284,6 +288,8 @@ def typical_validation(
             v_threshold=settings.median_threshold, 
             size=settings.median_size
         )
+
+        print(f"median filter invalidated {sum(flag.flatten())} vectors")
     
     # u[flag_m] = np.ma.masked
     # v[flag_m] = np.ma.masked
@@ -291,7 +297,6 @@ def typical_validation(
     # if settings.show_all_plots:
     #     plt.quiver(u,v,color='r')
 
-    # print(f"median filter invalidated {sum(flag_m.flatten())} vectors")
     # flag = flag_g | flag_m | flag_s
 
 
@@ -301,7 +306,7 @@ def typical_validation(
         # u[flag_s2n] = np.ma.masked
         # v[flag_s2n] = np.ma.masked
 
-        # print(f"s2n filter invalidated {sum(flag_s2n.flatten())} vectors")
+        print(f"s2n filter invalidated {sum(flag_s2n.flatten())} vectors")
         # if settings.show_all_plots:
         #     plt.quiver(u,v,color='g')
         #     plt.show()
