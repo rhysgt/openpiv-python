@@ -164,7 +164,7 @@ def sig2noise_val(
 
     return ind 
 
-
+@profile
 def local_median_val(u, v, u_threshold, v_threshold, size=1):
     """Eliminate spurious vectors with a local median threshold.
 
@@ -216,7 +216,7 @@ def local_median_val(u, v, u_threshold, v_threshold, size=1):
 
     return ind
 
-
+@profile
 def typical_validation(
     u: np.ndarray,
     v: np.ndarray,

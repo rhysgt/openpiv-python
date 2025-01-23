@@ -39,9 +39,8 @@ class PIVSettings:
     # Folder with the images to process
     filepath_images: Union[pathlib.Path, str] = files('openpiv') / "data" / "test1"  # type: ignore
     # Folder for the outputs
-    save_path: pathlib.Path = filepath_images.parent
-    # Root name of the output Folder for Result Files
-    save_folder_suffix: str = 'test1'
+    save_directory: pathlib.Path = filepath_images.parent
+    save_filename: str = 'test1'
     # Format and Image Sequence
     frame_pattern_a: str = 'exp1_001_a.bmp'
     frame_pattern_b: str = 'exp1_001_b.bmp'
@@ -197,7 +196,32 @@ def prepare_images(
     frame_a = tools.imread(file_a)
     frame_b = tools.imread(file_b)
     # print(frame_a.shape)
+    
+        # Crop width if necesssary
+    if frame_b.shape[1] > frame_a.shape[1]:
+        offset = (frame_b.shape[1] -frame_a.shape[1]) // 2
+        frame_b = frame_b[:, offset : offset + frame_a.shape[1]]
 
+    # Crop height if necessary
+    if frame_b.shape[0] > frame_a.shape[0]:
+        offset = (frame_b.shape[0] - frame_a.shape[0]) // 2
+        frame_b = frame_b[offset : offset + frame_a.shape[0], :]
+
+    # Pad if necessary
+    if (frame_b.shape[0] < frame_a.shape[0]) or (frame_b.shape[1] < frame_a.shape[1]):
+        a = -(frame_b.shape[0] - frame_a.shape[0]) // 2
+        aa = - a + frame_a.shape[0] - frame_b.shape[0]
+
+        b = -(frame_b.shape[1] - frame_a.shape[1]) // 2
+        bb = - b + frame_a.shape[1] - frame_b.shape[1]
+
+        frame_b = np.pad(frame_b, pad_width=((a, aa), (b, bb)), mode='constant')
+
+    print(frame_a.shape)
+    print(frame_b.shape)
+
+    if (frame_b.shape[0] != frame_a.shape[0]) or (frame_b.shape[1] != frame_a.shape[1]):
+        raise ValueError('Images are different sizes.')
     # crop to roi
     if settings.roi == "full":
         pass
@@ -219,17 +243,16 @@ def piv(settings):
 
     # if teh settings.save_path is a string convert it to the Path
     settings.filepath_images = pathlib.Path(settings.filepath_images) 
-    settings.save_path = pathlib.Path(settings.save_path)
+    settings.save_directory = pathlib.Path(settings.save_directory)
     # "Below is code to read files and create a folder to store the results"
-    save_path_string = \
-        f"OpenPIV_results_{settings.windowsizes[settings.num_iterations-1]}_{settings.save_folder_suffix}"
-
-    save_path = \
-        settings.save_path / save_path_string
-
-    if not save_path.exists():
+    #save_path_string = \
+    #    f"OpenPIV_results_{settings.windowsizes[settings.num_iterations-1]}_{settings.save_folder_suffix}"
+    
+    if not settings.save_directory.exists():
         # os.makedirs(save_path)
-        save_path.mkdir(parents=True, exist_ok=True)
+        settings.save_directory.mkdir(parents=True, exist_ok=True)
+        
+    save_path = settings.save_directory / settings.save_filename
     
     settings.save_path = save_path
 
@@ -389,7 +412,7 @@ def multipass(args, settings):
     x, y, u, v = transform_coordinates(x, y, u, v)
 
     # Saving
-    txt_file = settings.save_path / f'field_A{counter+1:04d}.txt'
+    txt_file = settings.save_path
     print(f'Saving to {txt_file}')
     tools.save(txt_file, x, y, u, v, flags, grid_mask, fmt=settings.fmt)
 

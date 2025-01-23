@@ -98,7 +98,7 @@ def gaussian(
     vf = convolve(v, g, mode="same")
     return uf, vf
 
-
+@profile
 def replace_outliers(
     u: np.ndarray,
     v: np.ndarray,
