@@ -751,20 +751,28 @@ def fft_correlate_images(
         #corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
 
 
-        if f2a_builder.input_shape == image_a.shape:
-            # Perform FFT computations
-            f2a = np.conj(f2a_builder(image_a))  # Conjugate of the FFT of image_a
-            f2b = f2b_builder(image_b)           # FFT of image_b
+        if (f2a_builder != None):
+            if  (f2a_builder.input_shape == image_a.shape):
+                # Perform FFT computations
+                f2a = np.conj(f2a_builder(image_a))  # Conjugate of the FFT of image_a
+                f2b = f2b_builder(image_b)           # FFT of image_b
 
-            # Compute the cross-correlation
-            corr = fftshift(corr_builder(byte_align(f2a * f2b)).real, axes=(-2, -1))
+                # Compute the cross-correlation
+                corr = fftshift(corr_builder(byte_align(f2a * f2b)).real, axes=(-2, -1))
+
+            else:
+
+                f2a = conj(rfft2(image_a, threads=20))
+                f2b = rfft2(image_b, threads=20)
+                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
 
         else:
 
-            f2a = conj(rfft2(image_a, threads=20))
-            f2b = rfft2(image_b, threads=20)
-            corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
+                f2a = conj(rfft2(image_a, threads=20))
+                f2b = rfft2(image_b, threads=20)
+                corr = fftshift(irfft2(f2a * f2b, threads=20).real, axes=(-2, -1))
 
+                
 
     else:
         print(f"correlation method {correlation_method } is not implemented")
@@ -1137,7 +1145,10 @@ def extended_search_area_piv(
     else:
         corr = fft_correlate_images(aa, bb,
                                     correlation_method=correlation_method,
-                                    normalized_correlation=normalized_correlation)
+                                    normalized_correlation=normalized_correlation,
+                                    f2a_builder = None,
+                                    f2b_builder =  None,
+                                    corr_builder = None)
         
         if use_vectorized:
             u, v, invalid = vectorized_correlation_to_displacements(
