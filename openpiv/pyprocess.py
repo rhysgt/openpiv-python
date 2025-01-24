@@ -184,7 +184,6 @@ def get_rect_coordinates(
     
     return (X, Y)
 
-@profile
 def sliding_window_array(
     image: np.ndarray, 
     window_size: Tuple[int,int]=(64,64),
@@ -675,7 +674,6 @@ def vectorized_sig2noise_ratio(correlation,
         raise ValueError(f"sig2noise_method not supported: {sig2noise_method}")
         
 
-@profile
 def fft_correlate_images(
    image_a, image_b,
     correlation_method: str="circular",
@@ -941,7 +939,6 @@ def fft_correlate_windows(window_a, window_b,
 
     return corr
 
-@profile
 def extended_search_area_piv(
     frame_a: np.ndarray,
     frame_b: np.ndarray,

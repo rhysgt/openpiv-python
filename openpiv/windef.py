@@ -609,7 +609,6 @@ def create_deformation_field(frame, x, y, u, v, interpolation_order = 3):
 
     return x, y, ut, vt
 
-@profile
 def deform_windows(frame, x, y, u, v, interpolation_order=1, interpolation_order2=3,
                    debugging=False):
     """
@@ -764,7 +763,6 @@ def first_pass(frame_a, frame_b, settings):
 
     return x, y, u, v, s2n
 
-@profile
 def multipass_img_deform(
     frame_a: np.ndarray,
     frame_b: np.ndarray,
