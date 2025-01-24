@@ -924,7 +924,8 @@ def extended_search_area_piv(
     width: int=2,
     normalized_correlation: bool=False,
     use_vectorized: bool=False,
-):
+    max_array_size: int = None,
+    ):
     """Standard PIV cross-correlation algorithm, with an option for
     extended area search that increased dynamic range. The search region
     in the second frame is larger than the interrogation window size in the
@@ -1077,15 +1078,43 @@ def extended_search_area_piv(
         mask = np.broadcast_to(mask, aa.shape)
         aa *= mask
 
-    corr = fft_correlate_images(aa, bb,
+    if max_array_size is not None and aa.size > max_array_size:
+        total_bad = 0
+        u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
+        area_size = search_area_size[0] * search_area_size[1]
+        num_areas = aa.shape[0]
+        areas_per_block = int(max_array_size // area_size)
+        num_blocks = int(np.ceil(num_areas / areas_per_block))
+        for i in range(num_blocks):
+            #print(f'block {i+1}')
+            block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
+
+            corr = fft_correlate_images(
+                aa[block_start:block_end], bb[block_start:block_end],
+                correlation_method=correlation_method,
+                normalized_correlation=normalized_correlation
+            )
+            u[block_start:block_end], v[block_start:block_end], invalid = vectorized_correlation_to_displacements(
+                corr, subpixel_method=subpixel_method
+            )
+
+            total_bad += invalid
+
+            print('block {0} / {1} : {2} bad peaks so far'.format(i+1, num_blocks, total_bad), end='\r')
+
+        u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
+
+    else:
+        corr = fft_correlate_images(aa, bb,
                                 correlation_method=correlation_method,
                                 normalized_correlation=normalized_correlation)
     aa, bb = None, None
     mempool.free_all_blocks()
 
     if use_vectorized is True:
-        u, v = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
+        u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
                                            subpixel_method=subpixel_method)
+        print('{0} bad peaks'.format(invalid))
     else:
         raise NotImplementedError('correlation_to_displacement')
         u, v = correlation_to_displacement(corr, n_rows, n_cols,
@@ -1195,7 +1224,7 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     peaks1_i[invalid] = corr.shape[1] // 2 # temp. so no errors would be produced
     peaks1_j[invalid] = corr.shape[2] // 2
     
-    print(f"Found {len(invalid)} bad peak(s)")
+    #print(f"Found {len(invalid)} bad peak(s)")
     if len(invalid) == corr.shape[0]: # in case something goes horribly wrong 
         return np.zeros((np.size(corr, 0), 2))*np.nan
     
@@ -1265,9 +1294,9 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
     #disp[ind, :] = np.vstack((disp_vx, disp_vy)).T
     #return disp[:,0].reshape((n_rows, n_cols)), disp[:,1].reshape((n_rows, n_cols))
     if n_rows == None or n_cols == None:
-        return disp_vx.get(), disp_vy.get()
+        return disp_vx.get(), disp_vy.get(), len(invalid)
     else:
-        return disp_vx.get().reshape((n_rows, n_cols)), disp_vy.get().reshape((n_rows, n_cols))
+        return disp_vx.get().reshape((n_rows, n_cols)), disp_vy.get().reshape((n_rows, n_cols)), len(invalid)
     
     
 def nextpower2(i):
