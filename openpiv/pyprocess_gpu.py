@@ -1108,17 +1108,17 @@ def extended_search_area_piv(
         corr = fft_correlate_images(aa, bb,
                                 correlation_method=correlation_method,
                                 normalized_correlation=normalized_correlation)
-    aa, bb = None, None
-    mempool.free_all_blocks()
+        aa, bb = None, None
+        mempool.free_all_blocks()
 
-    if use_vectorized is True:
-        u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
-        print('{0} bad peaks'.format(invalid))
-    else:
-        raise NotImplementedError('correlation_to_displacement')
-        u, v = correlation_to_displacement(corr, n_rows, n_cols,
-                                           subpixel_method=subpixel_method)
+        if use_vectorized is True:
+            u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
+                                            subpixel_method=subpixel_method)
+            print('{0} bad peaks'.format(invalid))
+        else:
+            raise NotImplementedError('correlation_to_displacement')
+            u, v = correlation_to_displacement(corr, n_rows, n_cols,
+                                            subpixel_method=subpixel_method)
 
     # return output depending if user wanted sig2noise information
     if sig2noise_method is not None:

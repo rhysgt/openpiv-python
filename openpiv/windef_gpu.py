@@ -414,7 +414,7 @@ def multipass(args, settings):
     x, y, u, v = transform_coordinates(x, y, u, v)
 
     # Saving
-    txt_file = settings.save_path / f'field_A{counter+1:04d}.txt'
+    txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
     tools.save(txt_file, x, y, u, v, flags, grid_mask, fmt=settings.fmt)
 
@@ -627,6 +627,7 @@ def first_pass(frame_a, frame_b, settings):
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     shapes = np.array(get_field_shape(frame_a.shape,
@@ -847,6 +848,7 @@ def multipass_img_deform(
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     frame_b = None
