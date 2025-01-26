@@ -422,71 +422,7 @@ def multipass(args, settings):
     print(file_a.stem, file_b.stem)
 
 
-def create_deformation_field(frame, x, y, u, v, window_size, overlap, interpolation_order = 3):
-    """
-    Deform an image by window deformation where a new grid is defined based
-    on the grid and displacements of the previous pass and pixel values are
-    interpolated onto the new grid.
-
-    Parameters
-    ----------
-    frame : 2d np.ndarray, dtype=np.int32
-        an two dimensions array of integers containing grey levels of
-        the first frame.
-
-    x : 2d np.ndarray
-        a two dimensional array containing the x coordinates of the
-        interrogation window centers, in pixels.
-
-    y : 2d np.ndarray
-        a two dimensional array containing the y coordinates of the
-        interrogation window centers, in pixels.
-
-    u : 2d np.ndarray
-        a two dimensional array containing the u velocity component,
-        in pixels/seconds.
-
-    v : 2d np.ndarray
-        a two dimensional array containing the v velocity component,
-        in pixels/seconds.
-
-    interpolation_order: scalar
-        the degree of the interpolation of the B-splines over the rectangular mesh
-
-    Returns
-    -------
-        x,y : new grid (after meshgrid)
-        u,v : deformation field
-    """
-    y1 = y[:, 0]  # extract first coloumn from meshgrid
-    x1 = x[0, :]  # extract first row from meshgrid
-    side_x = cp.arange(frame.shape[1])  # extract the image grid
-    side_y = cp.arange(frame.shape[0])
-
-    ut = scn.map_coordinates(
-        cp.array(u), 
-        cp.asarray(cp.meshgrid(
-            (side_x - x1[0]) / (window_size - overlap), 
-            (side_y - y1[0]) / (window_size - overlap)
-        )[::-1]), 
-        order=interpolation_order
-    )
-    vt = scn.map_coordinates(
-        cp.array(v), 
-        cp.asarray(cp.meshgrid(
-            (side_x - x1[0]) / (window_size - overlap), 
-            (side_y - y1[0]) / (window_size - overlap)
-        )[::-1]), 
-        order=interpolation_order
-    )
-
-    x, y = cp.meshgrid(side_x, side_y)
-
-    return x, y, ut, vt
-
-
-def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order=1, interpolation_order2=3,
-                   debugging=False):
+def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order = 1, interpolation_order2 = 3):
     """
     Deform an image by window deformation where a new grid is defined based
     on the grid and displacements of the previous pass and pixel values are
@@ -527,28 +463,51 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order=
         previous pass
     """
 
-    # frame = frame.astype(np.float32)
-    x, y, ut, vt = \
-        create_deformation_field(frame,
-                                 x, y, u, v, window_size, overlap,
-                                 interpolation_order=interpolation_order2)
-    # print('______------_____')
-    # print(y.shape)
-    # print(vt.shape)
-    # print(np.array((y - vt, x + ut)).shape)
+    mempool = cp.get_default_memory_pool()
+
+    y1 = y[:, 0]  # extract first column from meshgrid
+    x1 = x[0, :]  # extract first row from meshgrid
+    side_x = cp.arange(frame.shape[1])  # extract the image grid
+    side_y = cp.arange(frame.shape[0])
+
+    x, y = cp.meshgrid(side_x, side_y, copy=False)
+
+    #print(mempool.used_bytes()/1024/1024)   #5914
+
+    ut = scn.map_coordinates(
+        cp.array(u), 
+        cp.asarray(cp.meshgrid(
+            (side_x - x1[0]) / (window_size - overlap), 
+            (side_y - y1[0]) / (window_size - overlap)
+        )[::-1]), 
+        order=interpolation_order
+    )
+
+    #print(mempool.used_bytes()/1024/1024)   #9857
+
+    vt = scn.map_coordinates(
+        cp.array(v), 
+        cp.asarray(cp.meshgrid(
+            (side_x - x1[0]) / (window_size - overlap), 
+            (side_y - y1[0]) / (window_size - overlap)
+        )[::-1]), 
+        order=interpolation_order
+    )
+
+    del x1, y1, side_x, side_y
+    mempool.free_all_blocks()
+
+    #print(mempool.used_bytes()/1024/1024)  #13700
+
     frame_def = scn.map_coordinates(
-        frame, cp.array((y - vt, x + ut)), order=interpolation_order, mode='nearest')
+        frame, cp.array((y - vt, x + ut)), order=interpolation_order, mode='nearest'
+    )
 
-    if debugging:
-        plt.figure()
-        plt.quiver(x, y, ut, vt)
-        plt.title('new, x,y, ut,vt')
-        plt.show()
+    del x, y, ut, vt
+    mempool.free_all_blocks()
+ 
+    #print(mempool.used_bytes()/1024/1024)   #17742
 
-        plt.figure()
-        plt.imshow(frame-frame_def)
-        plt.title('new deformed image')
-        plt.show()
 
     return frame_def
 
@@ -739,6 +698,7 @@ def multipass_img_deform(
 
     x, y = get_rect_coordinates(frame_a.shape, window_size, overlap)
 
+
     # The interpolation function dont like meshgrids as input.
     # plus the coordinate system for y is now from top to bottom
     # and RectBivariateSpline wants an increasing set
@@ -764,31 +724,23 @@ def multipass_img_deform(
         y_int[0] - np.arange(y_add[0], 0, -1) * (window_size - overlap),
         y_int,
         y_int[-1] + np.arange(1, y_add[1] + 1) * (window_size - overlap)
-    ))
+    )) #.astype(int)
     x_int = np.hstack((
         x_int[0] - np.arange(x_add[0], 0, -1) * (window_size - overlap),
         x_int,
         x_int[-1] + np.arange(1, x_add[1] + 1) * (window_size - overlap)
-    ))
+    )) #.astype(int)
 
-    x, y = np.meshgrid(x_int, y_int)
-
+    x, y = np.meshgrid(x_int, y_int, copy=True)
 
     # interpolating the displacements from the old grid onto the new grid
     # y befor x because of numpy works row major
-    # ip = RectBivariateSpline(y_old, x_old, np.ma.filled(u_old, 0.), 
-    # print(f'y_old {type(y_old)}')
-    # print(f'x_old {type(x_old)}')
-    # print(f'u_old {type(u_old)}')
-    # print(f'v_old {type(v_old)}')
-    # u_old = u_old.get()
-    # v_old = v_old.get()
-    # print(f'u_old {type(u_old)}')
-    # print(f'v_old {type(v_old)}')
     ip = RectBivariateSpline(y_old, x_old, u_old, 
                              kx=settings.interpolation_order, 
                              ky=settings.interpolation_order)
+    
     u_pre = ip(y_int, x_int)
+    # dtype = float64
 
     # ip2 = RectBivariateSpline(y_old, x_old, np.ma.filled(v_old, 0.), 
     ip2 = RectBivariateSpline(y_old, x_old, v_old, 
@@ -805,19 +757,7 @@ def multipass_img_deform(
     # previous pass which are stored in the physical units
     # and so y from the get_coordinates
 
-    if settings.deformation_method == "symmetric":
-        raise NotImplementedError('settings.deformation_method == "symmetric"')
-        # this one is doing the image deformation (see above)
-        x_new, y_new, ut, vt = create_deformation_field(
-            frame_a, x, y, u_pre, v_pre,
-            interpolation_order=settings.interpolation_order)
-        frame_a = scn.map_coordinates(
-            frame_a, ((y_new - vt / 2, x_new - ut / 2)),
-            order=settings.interpolation_order, mode='nearest')
-        frame_b = scn.map_coordinates(
-            frame_b, ((y_new + vt / 2, x_new + ut / 2)),
-            order=settings.interpolation_order, mode='nearest')
-    elif settings.deformation_method == "second image":
+    if settings.deformation_method == "second image":
         frame_b = deform_windows(
             frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
             interpolation_order=settings.interpolation_order,
