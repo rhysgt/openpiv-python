@@ -9,6 +9,8 @@ from numpy import ma
 from numpy.fft import rfft2 as rfft2_, irfft2 as irfft2_, fftshift as fftshift_
 from scipy.signal import convolve2d as conv_
 
+from datetime import datetime
+
 import cupy as cp
 
 __licence_ = """
@@ -1088,6 +1090,7 @@ def extended_search_area_piv(
     #print(f'max_array_size: {max_array_size}')
 
     if max_array_size is not None and num_areas > (max_array_size/ (window_size[0] * window_size[1])):
+
         total_bad = 0
         u, v = np.zeros(n_rows * n_cols), np.zeros(n_rows * n_cols)
         area_size = search_area_size[0] * search_area_size[1]
@@ -1097,8 +1100,10 @@ def extended_search_area_piv(
         num_blocks = int(np.ceil(num_areas / areas_per_block))
         #print(f'num_blocks: {num_blocks}')
 
+        now = datetime.now()
+        print(f'\t{now.strftime("%H:%M:%S")}: {num_blocks} blocks starting')
         for i in range(num_blocks):
-            #print(f'block {i+1}')
+
             block_start, block_end = i*areas_per_block, (i+1)*areas_per_block
 
             aa = sliding_window_array(frame_a, search_area_size, overlap, 
@@ -1120,9 +1125,11 @@ def extended_search_area_piv(
             )
 
             total_bad += invalid
+           
+            now = datetime.now()
+            print(f'\t{now.strftime("%H:%M:%S")}: Block {i+1} / {num_blocks} : {total_bad} bad peaks so far', end='\r')
 
-            print('block {0} / {1} : {2} bad peaks so far'.format(i+1, num_blocks, total_bad), end='\r')
-
+        print(f'\t{now.strftime("%H:%M:%S")}: All {num_blocks} blocks complete : {total_bad} bad peaks')
         u, v = u.reshape((n_rows, n_cols)), v.reshape((n_rows, n_cols))
 
     else:
@@ -1137,7 +1144,7 @@ def extended_search_area_piv(
         if use_vectorized is True:
             u, v, invalid = vectorized_correlation_to_displacements(corr, n_rows, n_cols,
                                             subpixel_method=subpixel_method)
-            print('{0} bad peaks'.format(invalid))
+            print('\t{0} bad peaks'.format(invalid))
         else:
             raise NotImplementedError('correlation_to_displacement')
             u, v = correlation_to_displacement(corr, n_rows, n_cols,
@@ -1281,7 +1288,7 @@ def vectorized_correlation_to_displacements(corr: np.ndarray,
         den2 = 2 * log(cd) - 4 * log(c) + 2 * log(cu)
 
         if not (np.all(den1 != 0.0) and np.all(den2 != 0.0)):
-            print('rawhsdh, division by 0')
+            print('\trawhsdh, division by 0')
         shift_i = nom1 / den1
         shift_j = nom2 / den2
         # shift_i = np.divide(

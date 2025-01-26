@@ -24,6 +24,7 @@ import numpy as np
 from scipy.ndimage import generic_filter
 import matplotlib.pyplot as plt
 
+from datetime import datetime
 
 
 def global_val(
@@ -289,7 +290,8 @@ def typical_validation(
             size=settings.median_size
         )
 
-        print(f"median filter invalidated {sum(flag.flatten())} vectors")
+        now = datetime.now()
+        print(f"\t{now.strftime("%H:%M:%S")}: median filter invalidated {sum(flag.flatten())} vectors")
     
     # u[flag_m] = np.ma.masked
     # v[flag_m] = np.ma.masked
@@ -305,8 +307,9 @@ def typical_validation(
         
         # u[flag_s2n] = np.ma.masked
         # v[flag_s2n] = np.ma.masked
-
-        print(f"s2n filter invalidated {sum(flag_s2n.flatten())} vectors")
+       
+        now = datetime.now()
+        print(f"\t{now.strftime("%H:%M:%S")}: s2n filter invalidated {sum(flag_s2n.flatten())} vectors")
         # if settings.show_all_plots:
         #     plt.quiver(u,v,color='g')
         #     plt.show()

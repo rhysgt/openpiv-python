@@ -292,7 +292,7 @@ def multipass(args, settings):
     frame_b = cp.array(frame_b)
 
     now = datetime.now()
-    print(f'Set {counter+1} starting first pass {now.strftime("%H:%M:%S")}')
+    print(f' {now.strftime("%H:%M:%S")}: starting pass 1')
 
     # "first pass"
     x, y, u, v, s2n = first_pass(
@@ -352,8 +352,7 @@ def multipass(args, settings):
 
         time_diff = datetime.now() - now
         now = datetime.now()
-        print(f'Set {counter+1} starting pass {i+1} '
-                f'{now.strftime("%H:%M:%S")} {time_diff.total_seconds()}')
+        print(f' {now.strftime("%H:%M:%S")}: starting pass {i+1}')
 
         x, y, u, v, grid_mask, flags = multipass_img_deform(
             frame_a,
@@ -386,8 +385,7 @@ def multipass(args, settings):
 
     time_diff = datetime.now() - now
     now = datetime.now()
-    print(f'Set {counter+1} done {now.strftime("%H:%M:%S")} '
-            f'{time_diff.total_seconds()}')
+    print(f' {now.strftime("%H:%M:%S")}: completed pass {i}')
 
 
     # we now use only 0s instead of the image
@@ -470,7 +468,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
     side_x = cp.arange(frame.shape[1])  # extract the image grid
     side_y = cp.arange(frame.shape[0])
 
-    x, y = cp.meshgrid(side_x, side_y, copy=False)
+    x, y = cp.meshgrid(side_x, side_y)
 
     #print(mempool.used_bytes()/1024/1024)   #5914
 
@@ -480,7 +478,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
             (side_x - x1[0]) / (window_size - overlap), 
             (side_y - y1[0]) / (window_size - overlap)
         )[::-1]), 
-        order=interpolation_order
+        order=interpolation_order2
     )
 
     #print(mempool.used_bytes()/1024/1024)   #9857
@@ -491,11 +489,11 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
             (side_x - x1[0]) / (window_size - overlap), 
             (side_y - y1[0]) / (window_size - overlap)
         )[::-1]), 
-        order=interpolation_order
+        order=interpolation_order2
     )
 
     del x1, y1, side_x, side_y
-    mempool.free_all_blocks()
+    #mempool.free_all_blocks()
 
     #print(mempool.used_bytes()/1024/1024)  #13700
 
@@ -504,7 +502,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
     )
 
     del x, y, ut, vt
-    mempool.free_all_blocks()
+    #mempool.free_all_blocks()
  
     #print(mempool.used_bytes()/1024/1024)   #17742
 
@@ -757,6 +755,8 @@ def multipass_img_deform(
     # previous pass which are stored in the physical units
     # and so y from the get_coordinates
 
+    now = datetime.now()
+    print(f'\t{now.strftime("%H:%M:%S")}: deform_windows')
     if settings.deformation_method == "second image":
         frame_b = deform_windows(
             frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
@@ -764,6 +764,8 @@ def multipass_img_deform(
             interpolation_order2=settings.interpolation_order)
     else:
         raise Exception("Deformation method is not valid.")
+    now = datetime.now()
+    print(f'\t{now.strftime("%H:%M:%S")}: deform_windows complete')
 
 
     # if do_sig2noise is True
@@ -776,6 +778,7 @@ def multipass_img_deform(
     # and save some time on cross-correlations
     if settings.sig2noise_validate is False:
         settings.sig2noise_method = None
+
 
     u, v, s2n = extended_search_area_piv(
         frame_a,
