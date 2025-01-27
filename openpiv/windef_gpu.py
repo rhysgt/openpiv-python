@@ -828,16 +828,22 @@ def multipass_img_deform(
     if np.all(flags):
         raise ValueError("Something happened in the validation")
 
-    # we have to replace outliers
-    u, v = filters.replace_outliers(
-        u,
-        v,
-        flags,
-        method=settings.filter_method,
-        max_iter=settings.max_filter_iteration,
-        kernel_size=settings.filter_kernel_size,
-    )
-    flags = np.zeros(u.shape)
+   
+    ## Turn off remove_outliers for the last step
+    if current_iteration +1 != settings.num_iterations:
+        now = datetime.now()
+        print(f'\t{now.strftime("%H:%M:%S")}: replace_outliers')
+
+        # we have to replace outliers
+        u, v = filters.replace_outliers(
+            u,
+            v,
+            flags,
+            method=settings.filter_method,
+            max_iter=settings.max_filter_iteration,
+            kernel_size=settings.filter_kernel_size,
+        )
+        flags = np.zeros(u.shape)
 
     y = y[y_add[0]:-y_add[1], x_add[0]:-x_add[1]]
     x = x[y_add[0]:-y_add[1], x_add[0]:-x_add[1]]
