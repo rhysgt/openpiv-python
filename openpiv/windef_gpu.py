@@ -385,7 +385,7 @@ def multipass(args, settings):
 
     time_diff = datetime.now() - now
     now = datetime.now()
-    print(f' {now.strftime("%H:%M:%S")}: completed pass {i}')
+    print(f' {now.strftime("%H:%M:%S")}: completed pass {i+1}')
 
 
     # we now use only 0s instead of the image
@@ -493,7 +493,7 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
     )
 
     del x1, y1, side_x, side_y
-    #mempool.free_all_blocks()
+    mempool.free_all_blocks()
 
     #print(mempool.used_bytes()/1024/1024)  #13700
 
@@ -501,10 +501,11 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
         frame, cp.array((y - vt, x + ut)), order=interpolation_order, mode='nearest'
     )
 
-    del x, y, ut, vt
-    #mempool.free_all_blocks()
- 
     #print(mempool.used_bytes()/1024/1024)   #17742
+
+    ut = None
+    vt = None
+    mempool.free_all_blocks()
 
 
     return frame_def
@@ -768,6 +769,9 @@ def multipass_img_deform(
     print(f'\t{now.strftime("%H:%M:%S")}: deform_windows complete')
 
 
+    mempool = cp.get_default_memory_pool()
+    mempool.free_all_blocks()
+
     # if do_sig2noise is True
     #     sig2noise_method = sig2noise_method
     # else:
@@ -817,6 +821,9 @@ def multipass_img_deform(
 
     # validate in the multi-pass by default
     flags = validation.typical_validation(u, v, s2n, settings)
+
+    now = datetime.now()
+    print(f'\t{now.strftime("%H:%M:%S")}: typical_validation complete')
 
     if np.all(flags):
         raise ValueError("Something happened in the validation")

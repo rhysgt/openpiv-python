@@ -273,7 +273,8 @@ def typical_validation(
     if settings.std_validate:
         flag = flag | global_std(u, v, std_threshold=settings.std_threshold)
 
-        print(f"std filter invalidated {sum(flag.flatten())} vectors")
+        now = datetime.now()
+        print(f"\t{now.strftime("%H:%M:%S")}: std filter invalidated {sum(flag.flatten())} vectors")
 
     # u[flag_s] = np.ma.masked
     # v[flag_s] = np.ma.masked
