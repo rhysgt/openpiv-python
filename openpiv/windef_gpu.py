@@ -478,7 +478,8 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
             (side_x - x1[0]) / (window_size - overlap), 
             (side_y - y1[0]) / (window_size - overlap)
         )[::-1]), 
-        order=interpolation_order2
+        order=interpolation_order2,
+        mode='constant', cval=0
     )
 
     #print(mempool.used_bytes()/1024/1024)   #9857
@@ -489,13 +490,16 @@ def deform_windows(frame, x, y, u, v, window_size, overlap, interpolation_order 
             (side_x - x1[0]) / (window_size - overlap), 
             (side_y - y1[0]) / (window_size - overlap)
         )[::-1]), 
-        order=interpolation_order2
+        order=interpolation_order2,
+        mode='constant', cval=0
     )
 
     del x1, y1, side_x, side_y
     mempool.free_all_blocks()
 
     #print(mempool.used_bytes()/1024/1024)  #13700
+
+    frame = frame.astype(np.float32)
 
     frame_def = scn.map_coordinates(
         frame, cp.array((y - vt, x + ut)), order=interpolation_order, mode='nearest'
@@ -758,11 +762,16 @@ def multipass_img_deform(
 
     now = datetime.now()
     print(f'\t{now.strftime("%H:%M:%S")}: deform_windows')
+    
     if settings.deformation_method == "second image":
         frame_b = deform_windows(
             frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
             interpolation_order=settings.interpolation_order,
             interpolation_order2=settings.interpolation_order)
+        #if current_iteration == 6:
+            #plt.figure()
+            #plt.imshow(frame_b.get())
+            #plt.show()
     else:
         raise Exception("Deformation method is not valid.")
     now = datetime.now()
