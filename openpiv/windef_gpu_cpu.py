@@ -39,9 +39,9 @@ class PIVSettings:
     # Folder with the images to process
     filepath_images: Union[pathlib.Path, str] = files('openpiv') / "data" / "test1"  # type: ignore
     # Folder for the outputs
-    save_path: pathlib.Path = filepath_images.parent
+    save_directory: pathlib.Path = filepath_images.parent
     # Root name of the output Folder for Result Files
-    save_folder_suffix: str = 'test1'
+    save_filename: str = 'test1'
     # Format and Image Sequence
     frame_pattern_a: str = 'exp1_001_a.bmp'
     frame_pattern_b: str = 'exp1_001_b.bmp'
@@ -198,6 +198,30 @@ def prepare_images(
     frame_b = tools.imread(file_b)
     # print(frame_a.shape)
 
+
+    # Crop width if necesssary
+    if frame_b.shape[1] > frame_a.shape[1]:
+        offset = (frame_b.shape[1] -frame_a.shape[1]) // 2
+        frame_b = frame_b[:, offset : offset + frame_a.shape[1]]
+
+    # Crop height if necessary
+    if frame_b.shape[0] > frame_a.shape[0]:
+        offset = (frame_b.shape[0] - frame_a.shape[0]) // 2
+        frame_b = frame_b[offset : offset + frame_a.shape[0], :]
+
+    # Pad if necessary
+    if (frame_b.shape[0] < frame_a.shape[0]) or (frame_b.shape[1] < frame_a.shape[1]):
+        a = -(frame_b.shape[0] - frame_a.shape[0]) // 2
+        aa = - a + frame_a.shape[0] - frame_b.shape[0]
+
+        b = -(frame_b.shape[1] - frame_a.shape[1]) // 2
+        bb = - b + frame_a.shape[1] - frame_b.shape[1]
+
+        frame_b = np.pad(frame_b, pad_width=((a, aa), (b, bb)), mode='constant')
+
+    if (frame_b.shape[0] != frame_a.shape[0]) or (frame_b.shape[1] != frame_a.shape[1]):
+        raise ValueError('Images are different sizes.')
+
     # crop to roi
     if settings.roi == "full":
         pass
@@ -219,17 +243,16 @@ def piv(settings):
 
     # if teh settings.save_path is a string convert it to the Path
     settings.filepath_images = pathlib.Path(settings.filepath_images) 
-    settings.save_path = pathlib.Path(settings.save_path)
+    settings.save_directory = pathlib.Path(settings.save_directory)
     # "Below is code to read files and create a folder to store the results"
-    save_path_string = \
-        f"OpenPIV_results_{settings.windowsizes[settings.num_iterations-1]}_{settings.save_folder_suffix}"
+    #save_path_string = \
+    #    f"OpenPIV_results_{settings.windowsizes[settings.num_iterations-1]}_{settings.save_folder_suffix}"
 
-    save_path = \
-        settings.save_path / save_path_string
-
-    if not save_path.exists():
+    if not settings.save_directory.exists():
         # os.makedirs(save_path)
-        save_path.mkdir(parents=True, exist_ok=True)
+        settings.save_directory.mkdir(parents=True, exist_ok=True)
+        
+    save_path = settings.save_directory / settings.save_filename
     
     settings.save_path = save_path
 
@@ -267,7 +290,7 @@ def multipass(args, settings):
     frame_b = cp.array(frame_b)
 
     now = datetime.now()
-    print(f'Set {counter+1} starting first pass {now.strftime("%H:%M:%S")}')
+    print(f' {now.strftime("%H:%M:%S")}: starting pass 1')
 
     # "first pass"
     x, y, u, v, s2n = first_pass(
@@ -327,8 +350,7 @@ def multipass(args, settings):
 
         time_diff = datetime.now() - now
         now = datetime.now()
-        print(f'Set {counter+1} starting pass {i+1} '
-                f'{now.strftime("%H:%M:%S")} {time_diff.total_seconds()}')
+        print(f' {now.strftime("%H:%M:%S")}: starting pass {i+1}')
 
         x, y, u, v, grid_mask, flags = multipass_img_deform(
             frame_a,
@@ -361,8 +383,7 @@ def multipass(args, settings):
 
     time_diff = datetime.now() - now
     now = datetime.now()
-    print(f'Set {counter+1} done {now.strftime("%H:%M:%S")} '
-            f'{time_diff.total_seconds()}')
+    print(f' {now.strftime("%H:%M:%S")}: completed pass {i+1}')
 
 
     # we now use only 0s instead of the image
@@ -389,7 +410,7 @@ def multipass(args, settings):
     x, y, u, v = transform_coordinates(x, y, u, v)
 
     # Saving
-    txt_file = settings.save_path / f'field_A{counter+1:04d}.txt'
+    txt_file = settings.save_path   
     print(f'Saving to {txt_file}')
     tools.save(txt_file, x, y, u, v, flags, grid_mask, fmt=settings.fmt)
 
@@ -601,6 +622,7 @@ def first_pass(frame_a, frame_b, settings):
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     shapes = np.array(get_field_shape(frame_a.shape,
@@ -768,11 +790,13 @@ def multipass_img_deform(
             order=settings.interpolation_order, mode='nearest')
     elif settings.deformation_method == "second image":
         frame_b = deform_windows(
-            frame_b, x, y, u_pre, -v_pre,
+            frame_b, x, y, u_pre, -v_pre, window_size, overlap, 
             interpolation_order=settings.interpolation_order,
             interpolation_order2=settings.interpolation_order)
     else:
         raise Exception("Deformation method is not valid.")
+    now = datetime.now()
+    print(f'\t{now.strftime("%H:%M:%S")}: deform_windows complete')
 
 
     # if do_sig2noise is True
@@ -797,6 +821,7 @@ def multipass_img_deform(
         correlation_method=settings.correlation_method,
         normalized_correlation=settings.normalized_correlation,
         use_vectorized = settings.use_vectorized,
+        max_array_size=settings.max_array_size,
     )
 
     frame_b = None
@@ -823,18 +848,27 @@ def multipass_img_deform(
     # validate in the multi-pass by default
     flags = validation.typical_validation(u, v, s2n, settings)
 
+    now = datetime.now()
+    print(f'\t{now.strftime("%H:%M:%S")}: typical_validation complete')
+
     if np.all(flags):
         raise ValueError("Something happened in the validation")
 
-    # we have to replace outliers
-    u, v = filters.replace_outliers(
-        u,
-        v,
-        flags,
-        method=settings.filter_method,
-        max_iter=settings.max_filter_iteration,
-        kernel_size=settings.filter_kernel_size,
-    )
-    flags = np.zeros(u.shape)
+   
+    ## Turn off remove_outliers for the last step
+    if current_iteration +1 != settings.num_iterations:
+        now = datetime.now()
+        print(f'\t{now.strftime("%H:%M:%S")}: replace_outliers')
+
+        # we have to replace outliers
+        u, v = filters.replace_outliers(
+            u,
+            v,
+            flags,
+            method=settings.filter_method,
+            max_iter=settings.max_filter_iteration,
+            kernel_size=settings.filter_kernel_size,
+        )
+        flags = np.zeros(u.shape)
 
     return x, y, u, v, grid_mask, flags
