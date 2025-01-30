@@ -9,23 +9,29 @@ class PIVSettings:
     """ All the PIV settings for the batch analysis with multi-processing and
     window deformation. Default settings are set at the initiation
     """
-    # "Data related settings"
-    # Folder with the images to process
-    filepath_images: Union[pathlib.Path, str] = files('openpiv') / "data" / "test1"  # type: ignore
-    # Folder for the outputs
-    save_directory: pathlib.Path = filepath_images.parent
-    save_filename: str = 'test1'
+    
+    "Data related settings"
 
+    # Input directory (containing images to be processed)
+    filepath_images: Union[pathlib.Path, str] = files('openpiv') / "data" / "test1"  # type: ignore
+    
     # Format and Image Sequence
     frame_pattern_a: str = 'exp1_001_a.bmp'
     frame_pattern_b: str = 'exp1_001_b.bmp'
 
-    # "Region of interest"
-    # (50,300,50,300) #Region of interest: (xmin,xmax,ymin,ymax) or 'full'
-    # for full image
+    # Output directory
+    save_directory: pathlib.Path = filepath_images.parent
+
+    # Output filename
+    save_filename: str = 'test1'
+
+    "Region of interest"
+
+    # (xmin,xmax,ymin,ymax) or 'full' for full image
     roi: Union[Tuple[int, int, int, int], str] = "full"
 
-    # "Image preprocessing"
+    "Image preprocessing"
+
     # Every image would be processed separately and the
     # average mask is applied to both A, B, but it's varying
     # for the frames sequence
@@ -36,11 +42,11 @@ class PIVSettings:
     dynamic_masking_threshold: float = 0.005
     dynamic_masking_filter_size: int = 7
 
-
     # Static masking applied to all images, A,B
     static_mask: Optional[np.ndarray] = None # or a boolean matrix of image shape
 
-    # "Processing Parameters"
+    "Processing Parameters"
+
     correlation_method: str="circular"  # ['circular', 'linear']
     normalized_correlation: bool=False
 
@@ -55,6 +61,7 @@ class PIVSettings:
     # choice.
 
     num_iterations: int = len(windowsizes)  # select the number of PIV
+
     # passes
 
     # methode used for subpixel interpolation:
@@ -69,6 +76,7 @@ class PIVSettings:
     interpolation_order: int=3
     scaling_factor: float = 1.0  # scaling factor pixel/meter
     dt: float = 1.0  # time between to frames (in seconds)
+
     # Signal to noise ratio:
     # we can decide to estimate it or not at every vector position
     # we can decided if we use it for validation or only store it for 
@@ -94,14 +102,16 @@ class PIVSettings:
     #estimating sig2noise ratio at all, so we can set both sig2noise_method to None 
 
 
-    # "vector validation options"
+    "vector validation options"
+
     # choose if you want to do validation of the first pass: True or False
     validation_first_pass: bool=False
     # only effecting the first pass of the interrogation the following
     # passes
     # in the multipass will be validated
 
-    # "Validation Parameters"
+    "Validation Parameters"
+
     # The validation is done at each iteration based on three filters.
     # The first filter is based on the min/max ranges. Observe that these
     # values are defined in
@@ -109,9 +119,11 @@ class PIVSettings:
     min_max_validate: bool=False
     min_max_u_disp: Tuple=(-10000, 10000)
     min_max_v_disp: Tuple=(-10000, 10000)
+
     # The second filter is based on the global STD threshold
     std_validate: bool=False
     std_threshold: int=7  # threshold of the std validation
+    
     # The third filter is the median test (not normalized at the moment)
     median_validate: bool=False
     median_threshold: int=3  # threshold of the median validation
@@ -119,7 +131,8 @@ class PIVSettings:
     # the S/N.
     median_size: int=1  # defines the size of the local median
     
-    # "Outlier replacement or Smoothing options"
+    "Outlier replacement or Smoothing options"
+
     # Replacment options for vectors which are masked as invalid by the
     # validation
     # Choose: True or False
@@ -133,7 +146,8 @@ class PIVSettings:
     max_filter_iteration: int=3
     filter_kernel_size: int=2  # kernel size for the localmean method
     
-    # "Output options"
+    "Output options"
+
     # Select if you want to save the plotted vectorfield: True or False
     save_plot: bool=False
     # Choose wether you want to see the vectorfield or not:True or False
@@ -146,7 +160,8 @@ class PIVSettings:
     invert: bool=False  # for the test_invert
 
     fmt: str="%.4e"
+    
+    "CPU/GPU settings"
 
     num_cpus: int=1
-
     max_array_size: int=None

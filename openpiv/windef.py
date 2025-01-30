@@ -6,7 +6,6 @@ Created on Fri Oct  4 14:04:04 2019
 """
 
 import pathlib
-from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 import numpy as np
 import scipy.ndimage as scn

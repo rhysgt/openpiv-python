@@ -6,10 +6,8 @@ Created on Fri Oct  4 14:04:04 2019
 """
 
 import pathlib
-from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 import numpy as np
-# import scipy.ndimage as scn
 from skimage.util import invert
 
 from scipy.interpolate import RectBivariateSpline
@@ -18,16 +16,14 @@ import matplotlib.pyplot as plt
 from importlib_resources import files
 from openpiv.tools import Multiprocesser, display_vector_field, transform_coordinates
 from openpiv import validation, filters, tools, scaling, preprocess
-# from openpiv.pyprocess import extended_search_area_piv, get_rect_coordinates, \
-#     get_field_shape
+from openpiv.pyprocess_gpu import extended_search_area_piv, get_rect_coordinates, \
+    get_field_shape
 from openpiv import smoothn
 
 from datetime import datetime
 
 import cupy as cp
 import cupyx.scipy.ndimage as scn
-from openpiv.pyprocess_gpu import extended_search_area_piv, get_rect_coordinates, \
-    get_field_shape
 
 from openpiv.settings import PIVSettings
 
