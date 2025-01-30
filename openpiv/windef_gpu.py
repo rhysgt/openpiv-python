@@ -13,18 +13,15 @@ from skimage.util import invert
 from scipy.interpolate import RectBivariateSpline
 import matplotlib.pyplot as plt
 
-from importlib_resources import files
 from openpiv.tools import Multiprocesser, display_vector_field, transform_coordinates
 from openpiv import validation, filters, tools, scaling, preprocess
 from openpiv.pyprocess_gpu import extended_search_area_piv, get_rect_coordinates, \
     get_field_shape
-from openpiv import smoothn
 
 from datetime import datetime
 
 import cupy as cp
 import cupyx.scipy.ndimage as scn
-
 
 from openpiv.settings import PIVSettings
     
@@ -180,21 +177,6 @@ def multipass(args, settings):
             kernel_size=settings.filter_kernel_size,
         )
 
-    # "adding masks to add the effect of all the validations"
-    # if settings.smoothn:
-    #     u, *_ = smoothn.smoothn(
-    #         u,
-    #         s=settings.smoothn_p
-    #     )
-    #     v, *_ = smoothn.smoothn(
-    #         v,
-    #         s=settings.smoothn_p
-    #     )
-
-    #     # enforce grid_mask that possibly destroyed by smoothing
-    #     u = np.ma.masked_array(u, mask=grid_mask)
-    #     v = np.ma.masked_array(v, mask=grid_mask)
-
 
     # Multi pass
     for i in range(1, settings.num_iterations):
@@ -214,22 +196,6 @@ def multipass(args, settings):
             settings,
         )
         mempool.free_all_blocks()
-
-        # If the smoothing is active, we do it at each pass
-        # but not the last one
-        # if settings.smoothn is True and i < settings.num_iterations-1:
-        #     u, dummy_u1, dummy_u2, dummy_u3 = smoothn.smoothn(
-        #         u, s=settings.smoothn_p
-        #     )
-        #     v, dummy_v1, dummy_v2, dummy_v3 = smoothn.smoothn(
-        #         v, s=settings.smoothn_p
-        #     )
-        # if not isinstance(u, np.ma.MaskedArray):
-        #     raise ValueError('not a masked array anymore')
-
-
-        # u = cp.ma.masked_array(u, cp.ma.nomask)
-        # v = cp.ma.masked_array(v, cp.ma.nomask)
 
 
     time_diff = datetime.now() - now
